@@ -308,6 +308,16 @@ def main():
         optimizer_steps = max(step_values, default=0)
         global_steps = outer.trainer.state.global_step
         loss = float(train_result["final_loss"])
+        # Preserve diagnostics even when the numerical gate rejects this run.
+        report.update(
+            changed_trainable_tensors=changed,
+            actual_optimizer_steps=optimizer_steps,
+            global_steps=global_steps,
+            loss=loss,
+            loss_log=losses,
+            gradient_checks=gradients,
+        )
+        save()
         if (
             not changed
             or not optimizer_steps
