@@ -65,19 +65,21 @@ def main():
     run(["nvidia-smi", "--query-gpu=name,memory.total,memory.free,driver_version", "--format=csv"])
     run(["apt-get", "update", "-qq"])
     run(["apt-get", "install", "-y", "-qq", "build-essential", "pkg-config", "libicu-dev"])
-    bootstrap = root / ".venv-bootstrap"
-    if not (bootstrap / "bin/python").exists():
-        run([sys.executable, "-m", "venv", bootstrap])
-    run([bootstrap / "bin/python", "-m", "pip", "install", "uv==0.11.3"])
-    uv = bootstrap / "bin/uv"
+    # Colab's system Python can lack a working ensurepip. Install only uv into
+    # an isolated target directory; uv creates Python 3.12 without ensurepip.
+    bootstrap = root / "bootstrap-uv"
+    env["PYTHONPATH"] = str(bootstrap)
+    env["PIP_CACHE_DIR"] = str(root / "pip-cache")
+    run([sys.executable, "-m", "pip", "install", "--upgrade", "--target", bootstrap, "uv==0.11.3"])
+    uv = [sys.executable, "-m", "uv"]
     target = root / ".venv-training"
     if not (target / "bin/python").exists():
-        run([uv, "venv", "--python", "3.12", target])
+        run([*uv, "venv", "--python", "3.12", target])
     python = target / "bin/python"
     lock = source / "gpu/requirements-linux-py312.txt"
-    run([uv, "pip", "sync", "--python", python, "--require-hashes", lock])
-    run([uv, "pip", "install", "--python", python, "-c", lock, "-e", source])
-    run([uv, "pip", "check", "--python", python])
+    run([*uv, "pip", "sync", "--python", python, "--require-hashes", lock])
+    run([*uv, "pip", "install", "--python", python, "-c", lock, "-e", source])
+    run([*uv, "pip", "check", "--python", python])
     run([python, source / "gpu/inspect_training_env.py"])
     result_path = root / "gpu-environment-result.json"
     report = json.loads(result_path.read_text())

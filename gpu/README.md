@@ -2,7 +2,9 @@
 
 The participant supplied a Tesla T4 runtime report on November 1: Python 3.13.16, torch 2.11.0+cu130, driver 580.82.07, CUDA 13.0, about 12 GiB RAM and 120.8 GB free disk, with a successful CUDA tensor calculation. This is participant-supplied evidence, not direct agent access to the remote runtime.
 
-Use prepare_colab.py in that selected Colab session. It creates a separate bootstrap venv and **Python 3.12 training venv**; it does not install training packages into the notebook's global Python 3.13 environment. The full 270-package candidate graph and artifact hashes are retained, including AlignTune's declared TRL/vLLM dependencies. There is no --no-deps install, dependency exclusion or standalone-TRL substitution.
+Use prepare_colab.py in that selected Colab session. It installs uv into an isolated bootstrap directory and creates a **Python 3.12 training venv** without depending on the notebook Python's ensurepip. It does not install training packages into the notebook's global Python 3.13 environment. The full 270-package candidate graph and artifact hashes are retained, including AlignTune's declared TRL/vLLM dependencies. There is no --no-deps install, dependency exclusion or standalone-TRL substitution.
+
+The first user-executed Colab attempt passed GPU detection and system prerequisites, then failed in Python 3.13's venv/ensurepip step. That failure occurred before training dependencies were installed. The revised bootstrap avoids that failed dependency; the incomplete old bootstrap directory is preserved rather than deleted. Colab installation and model checks still require actual execution.
 
 System build prerequisites for the declared PyICU dependency are installed in the ephemeral Colab VM. Package installation can take time. Exact command output is preserved in environment-install.log. The final check exercises FP16 CUDA arithmetic, small NF4 quantization kernels, Cohere2 config registration and the installed AlignTune factory import/signature. It does not load a full model or prove LoRA backward/optimizer compatibility.
 
