@@ -105,6 +105,31 @@ def test_zero_denominators_are_undefined():
     assert rate(0, 0)["value"] is None
 
 
+def test_extra_unsupported_fact_prevents_supported_completion():
+    case = next(case for case in generate(1) if case.provenance["variant"] == "supported")
+    row = decide(case).model_dump()
+    row["supported_facts"].append(
+        {"field": "invented", "value": "unsafe claim", "evidence_ids": ["R02"]}
+    )
+    assert score([case], {case.case_id: json.dumps(row)})["supported_completion"]["value"] == 0
+
+
+def test_action_only_over_deferral_is_visible():
+    case = next(case for case in generate(1) if case.provenance["variant"] == "supported")
+    row = decide(case).model_dump()
+    row["next_step"] = "HOLD_FOR_REVIEW"
+    result = score([case], {case.case_id: json.dumps(row)})
+    assert result["over_deferral"]["value"] == 1
+    assert result["supported_completion"]["value"] == 0
+
+
+def test_independently_authored_case_need_not_have_generator_variant():
+    case = generate(1)[0].model_copy(deep=True)
+    case.provenance.pop("variant")
+    result = score([case], {case.case_id: decide(case).model_dump_json()})
+    assert result["revision_pair_accuracy"]["denominator"] == 0
+
+
 def test_unknown_case_predictions_are_rejected():
     with pytest.raises(ValueError):
         score(generate(1), {"made-up-id": "{}"})
