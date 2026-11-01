@@ -244,6 +244,27 @@ def main():
             def on_train_begin(self, args, state, control, **kwargs):
                 checks = []
                 native = outer.trainer
+                # TRL 1.7.1 unconditionally casts quantized-model adapters to BF16
+                # during construction, even with FP16 arguments. Restore FP32
+                # master adapter weights before the first forward/optimizer step.
+                if not args.fp16 or args.bf16:
+                    raise ValueError("Expected FP16 mixed precision with BF16 disabled")
+                params = dict(native.model.named_parameters())
+                active = {name: p for name, p in params.items() if p.requires_grad}
+                if not active or any("lora_" not in name for name in active):
+                    raise ValueError("Precision repair is restricted to LoRA adapters")
+                report["adapter_dtypes_before_precision_fix"] = sorted(
+                    {str(p.dtype) for p in active.values()}
+                )
+                with torch.no_grad():
+                    for param in active.values():
+                        if param.grad is not None:
+                            raise ValueError("Precision repair must precede backward")
+                        param.data = param.data.to(dtype=torch.float32)
+                if any(p.dtype != torch.float32 for p in active.values()):
+                    raise ValueError("FP32 adapter master weight check failed")
+                report["adapter_dtypes_for_training"] = ["torch.float32"]
+                report["mixed_precision_for_training"] = "fp16"
                 for index in range(len(native.train_dataset)):
                     batch = native.data_collator([native.train_dataset[index]])
                     mask = batch["attention_mask"][0].bool()
