@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
 
-from smoke_checks import verify_supervision
+from smoke_checks import validate_cached_weights, verify_supervision
 
 MODEL = "CohereLabs/tiny-aya-fire"
 REVISION = "73500c80fcb6c8bea3e830c21d5d2920249a0e1a"
@@ -59,11 +59,12 @@ def main():
         baseline_report = json.loads((root / "model-smoke/result.json").read_text())
         if baseline_report["status"] != "PASS" or baseline_report["model_revision"] != REVISION:
             raise ValueError("The matching real baseline/model-load gate must pass first")
-        from huggingface_hub import snapshot_download
+        from huggingface_hub import hf_hub_download
 
-        snapshot = Path(snapshot_download(MODEL, revision=REVISION, local_files_only=True))
-        if not list(snapshot.glob("*.safetensors")):
-            raise ValueError("Pinned model weight files are not cached")
+        snapshot = Path(
+            hf_hub_download(MODEL, "config.json", revision=REVISION, local_files_only=True)
+        ).parent
+        report["cache_validation"] = validate_cached_weights(snapshot)
         import torch
         from aligntune import create_sft_trainer
         from datasets import Dataset
