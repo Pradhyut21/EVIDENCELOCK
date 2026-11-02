@@ -259,6 +259,19 @@ def main():
                 # master adapter weights before the first forward/optimizer step.
                 if not args.fp16 or args.bf16:
                     raise ValueError("Expected FP16 mixed precision with BF16 disabled")
+                # The previous full run overflowed at iteration 2 with the
+                # default loss scale. Use the public GradScaler state API to
+                # start lower; retain the strict nonfinite-gradient gate.
+                scaler = native.accelerator.scaler
+                if scaler is None:
+                    raise ValueError("FP16 gradient scaler is required")
+                scaler_state = scaler.state_dict()
+                report["initial_loss_scale_before"] = scaler_state["scale"]
+                scaler_state["scale"] = 1024.0
+                scaler.load_state_dict(scaler_state)
+                report["initial_loss_scale_for_training"] = scaler.get_scale()
+                if scaler.get_scale() != 1024.0:
+                    raise ValueError("Gradient scaler configuration did not take effect")
                 params = dict(native.model.named_parameters())
                 active = {name: p for name, p in params.items() if p.requires_grad}
                 if not active or any("lora_" not in name for name in active):
