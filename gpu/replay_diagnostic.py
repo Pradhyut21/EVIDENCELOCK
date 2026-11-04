@@ -68,11 +68,13 @@ def main():
                 for index, case in enumerate(cases):
                     messages = [{"role": "user", "content": prompt(case)}]
                     ids = tok.apply_chat_template(
-                        messages, tokenize=True, add_generation_prompt=True
-                    )
+                        messages, tokenize=True, add_generation_prompt=True, return_dict=True
+                    )["input_ids"]
                     saved_ids = saved_tok.apply_chat_template(
-                        messages, tokenize=True, add_generation_prompt=True
-                    )
+                        messages, tokenize=True, add_generation_prompt=True, return_dict=True
+                    )["input_ids"]
+                    if not isinstance(ids, list) or len(ids) < 100:
+                        raise ValueError("Expected a full token ID sequence, not mapping keys")
                     if variant == "base":
                         drift.append(
                             {
@@ -98,7 +100,10 @@ def main():
                             if tok.pad_token_id is not None
                             else tok.eos_token_id,
                         )
-                    raw = tok.decode(generated[0, len(ids) :], skip_special_tokens=True)
+                    input_length = inputs["input_ids"].shape[-1]
+                    if input_length != len(ids):
+                        raise ValueError("Prompt token counts disagree")
+                    raw = tok.decode(generated[0, input_length:], skip_special_tokens=True)
                     group = groups[variant + "/" + case.split]
                     group["cases"] += 1
                     group["evidence_copy_prefix"] += raw.startswith('{"as_of"')
