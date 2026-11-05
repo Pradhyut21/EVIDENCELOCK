@@ -181,8 +181,9 @@ def main():
         save()
         assert steps == 4 and outer.trainer.state.global_step == 4 and changed > 0
         assert gradients["finite_nonzero"] > 0 and gradients["nonfinite"] == 0
-        weights = list(output.rglob("adapter_model.safetensors"))
-        assert len(weights) == 1
+        # DPO also saves a ref/ adapter; select the policy artifact explicitly.
+        weights = [output / "adapter" / "adapter_model.safetensors"]
+        assert weights[0].is_file()
         tensors = load_file(str(weights[0]))
         assert all(torch.isfinite(t).all() for t in tensors.values())
         report["adapter_sha256"] = hashlib.sha256(weights[0].read_bytes()).hexdigest()
