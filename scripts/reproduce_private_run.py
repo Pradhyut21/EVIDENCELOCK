@@ -1,4 +1,4 @@
-"""Restore a pinned private input bundle; execute only on explicitly selected Linux GPU.
+"""Restore a pinned input bundle; execute only on explicitly selected Linux GPU.
 
 This script never submits paid jobs. Authenticate locally using the HF CLI first.
 """
@@ -15,8 +15,13 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--revision", required=True, help="Private artifact repository commit")
-    parser.add_argument("--path", required=True, help="Versioned private payload path")
+    parser.add_argument(
+        "--repo",
+        default="pradhyut/evidencelock-private-runs",
+        help="Artifact dataset repository (public or authenticated private)",
+    )
+    parser.add_argument("--revision", required=True, help="Artifact repository commit")
+    parser.add_argument("--path", required=True, help="Versioned payload path")
     parser.add_argument("--sha256", required=True, help="Expected outer ZIP hash")
     parser.add_argument("--output", type=Path, required=True, help="New extraction directory")
     parser.add_argument(
@@ -40,14 +45,14 @@ def main():
     from huggingface_hub import hf_hub_download
 
     archive_path = hf_hub_download(
-        "pradhyut/evidencelock-private-runs",
+        args.repo,
         args.path,
         revision=args.revision,
         repo_type="dataset",
     )
     actual = hashlib.sha256(Path(archive_path).read_bytes()).hexdigest()
     if actual != args.sha256:
-        raise ValueError("Private input bundle SHA256 mismatch")
+        raise ValueError("Input bundle SHA256 mismatch")
     destination = args.output.resolve()
     with zipfile.ZipFile(archive_path) as archive:
         names = archive.namelist()
@@ -59,6 +64,7 @@ def main():
         destination.mkdir(parents=True)
         archive.extractall(destination)
     record = {
+        "artifact_repository": args.repo,
         "artifact_revision": args.revision,
         "artifact_path": args.path,
         "artifact_sha256": actual,

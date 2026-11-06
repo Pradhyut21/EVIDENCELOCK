@@ -1,9 +1,14 @@
-# Third-party dependencies and inspirations
+# Third-party dependencies and artifact attribution
 
-- CuratorKIT 0.1.22: https://github.com/Lexsi-Labs/CuratorKIT — LSAL-1.1, source-available/noncommercial; preserve its own notices. Actual installed API is inspected and exercised.
-- AuditKIT 1.1.3: https://github.com/Lexsi-Labs/AuditKIT — LSAL-1.2; distinguish personal/academic use from organizational use and retain notices. Current runs are precomputed oracle/test fixtures, not model inference.
-- AlignTune: https://github.com/Lexsi-Labs/aligntune — not installed/executed in this CPU environment. The separately researched training candidate includes multiple upstream license components; review those before distribution.
-- CohereLabs/tiny-aya-fire: https://huggingface.co/CohereLabs/tiny-aya-fire — gated CC-BY-NC terms and AUP; no weights are redistributed here.
-- Pydantic, pytest, Ruff, uv and setuptools retain their own licenses and notices.
+The repository's MIT license covers original EVIDENCELOCK source and documentation. It does not relicense dependencies, model derivatives or third-party materials. Dependency environments are not vendored in this release.
 
-The four Pradhyut21 reference projects informed modularity, strict contracts, source ledgers, unknown states, correction handling and honest evaluation limitations. They are pre-existing references, not EVIDENCELOCK competition contributions. No source code or existing synthetic results were copied into this implementation.
+- **CuratorKIT 0.1.22** genuinely processed the synthetic dataset and exported trainer inputs. Its installed license is [LSAL 1.1](https://github.com/Lexsi-Labs/CuratorKIT/blob/main/LICENSE.md), a source-available noncommercial license. Preserve its notices when redistributing covered material.
+- **AlignTune 0.1.28** genuinely executed native TRL training, including the adapter save/reload workflow. The [published distribution metadata](https://pypi.org/pypi/aligntune/0.1.28/json) declares `MIT AND Apache-2.0 AND AGPL-3.0-only AND LGPL-3.0-only`. Although the upstream repository has a [top-level MIT license](https://github.com/Lexsi-Labs/aligntune/blob/main/LICENSE), that does not erase the distribution's component license declarations. Installed dependencies retain their own terms.
+- **AuditKIT 1.1.3** genuinely evaluated preserved baseline and adapter model predictions. Separately labeled oracle references and software fixtures are also retained. Its installed [LSAL 1.2 license](https://github.com/Lexsi-Labs/AuditKIT/blob/main/LICENSE.md) distinguishes personal/academic noncommercial use from organizational use; organizations must follow its acknowledgement or permission provisions.
+- Pydantic, pytest, Ruff, uv, PyTorch, Transformers, PEFT, TRL, Accelerate and bitsandbytes retain their own licenses and notices.
+
+The model artifacts derive from **Cohere Labs' [Tiny Aya Fire](https://huggingface.co/CohereLabs/tiny-aya-fire)**, revision `73500c80fcb6c8bea3e830c21d5d2920249a0e1a`. The base is governed by [CC-BY-NC 4.0 with Cohere's acceptable-use addendum](https://cohere.com/cohere-labs-cc-by-nc-license) and the [Cohere Labs Acceptable Use Policy](https://docs.cohere.com/docs/cohere-labs-acceptable-use-policy). Adapter cards must identify Cohere Labs, link the base and these terms, and identify EVIDENCELOCK's LoRA adaptations and metadata changes. Attribution does not imply endorsement. This release distributes adapter deltas, not merged base weights, base-weight shards or tokenizer assets; users obtain the base separately under its access conditions.
+
+Dataset cards distinguish original synthetic benchmark inputs, curated exports, model-generated outputs and execution records, and state the applicable component terms. Source-code MIT licensing does not automatically license every dataset component. Model outputs remain identified as generated content and subject to applicable model-use conditions.
+
+The pre-existing Pradhyut21 projects celebrate-ai-event-planner, jalrakshak, pantrytrace and suryaledger informed modularity, contracts and evidence-ledger design. No source code, data or benchmark results from those projects are claimed as new EVIDENCELOCK contributions. These notices record observed sources and terms; they do not assert independent legal clearance.
