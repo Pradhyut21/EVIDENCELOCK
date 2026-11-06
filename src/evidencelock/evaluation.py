@@ -10,6 +10,42 @@ from .provenance import sha256, write_json
 from .schemas import parse_prediction
 
 
+def _sample_input_and_metadata(case, record, source_kind):
+    """Validate preserved generation context without changing the scored output."""
+    metadata = {"source_kind": source_kind}
+    if record is None:
+        return prompt(case), metadata
+
+    if "actual_prompt" in record:
+        actual_prompt = record["actual_prompt"]
+        if not isinstance(actual_prompt, str) or not actual_prompt.strip():
+            raise ValueError("actual_prompt must be a nonempty string when supplied")
+        sample_input = actual_prompt  # Preserve exact text, including whitespace.
+        metadata["input_source"] = "prediction_record.actual_prompt"
+    else:
+        sample_input = prompt(case)
+        metadata["input_source"] = "case_default_prompt"
+
+    if "decoding_prefix" in record:
+        prefix = record["decoding_prefix"]
+        if not isinstance(prefix, str):
+            raise ValueError("decoding_prefix must be a string when supplied")
+        metadata["decoding_prefix"] = prefix
+
+    for key in ["model_id", "model_revision", "adapter", "adapter_sha256"]:
+        if key not in record:
+            continue
+        value = record[key]
+        # adapter=None explicitly identifies base-model generation.
+        if value is None and key == "adapter":
+            metadata[key] = None
+        elif not isinstance(value, str) or not value.strip():
+            raise ValueError(f"{key} must be a nonempty string when supplied")
+        else:
+            metadata[key] = value
+    return sample_input, metadata
+
+
 def evaluate(cases, prediction_file: Path, output: Path):
     import auditkit as ak
 
@@ -25,16 +61,21 @@ def evaluate(cases, prediction_file: Path, output: Path):
     case_map = {case.case_id: case for case in cases}
     if set(predictions) - set(case_map):
         raise ValueError("Unknown prediction IDs")
-    samples = [
-        ak.Sample(
-            id=case.case_id,
-            input=prompt(case),
-            target=case.oracle_status,
-            actual_output=predictions.get(case.case_id, ""),
-            metadata={"source_kind": next(iter(kinds))},
+    record_map = {row["case_id"]: row for row in records}
+    samples = []
+    for case in cases:
+        sample_input, metadata = _sample_input_and_metadata(
+            case, record_map.get(case.case_id), next(iter(kinds))
         )
-        for case in cases
-    ]
+        samples.append(
+            ak.Sample(
+                id=case.case_id,
+                input=sample_input,
+                target=case.oracle_status,
+                actual_output=predictions.get(case.case_id, ""),
+                metadata=metadata,
+            )
+        )
 
     def exact_status_action(sample, raw):
         case = case_map[sample.id]
