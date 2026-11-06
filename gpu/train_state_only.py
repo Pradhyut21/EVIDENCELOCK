@@ -57,13 +57,8 @@ def main():
     save()
     try:
         baseline_report = json.loads((root / "model-smoke/result.json").read_text())
-        if (
-            baseline_report["status"] != "PASS"
-            or baseline_report["model_revision"] != REVISION
-        ):
-            raise ValueError(
-                "The matching real baseline/model-load gate must pass first"
-            )
+        if baseline_report["status"] != "PASS" or baseline_report["model_revision"] != REVISION:
+            raise ValueError("The matching real baseline/model-load gate must pass first")
         gate = json.loads((root / "align-smoke/latest-result.json").read_text())
         if (
             not all(
@@ -81,9 +76,7 @@ def main():
         from huggingface_hub import hf_hub_download
 
         snapshot = Path(
-            hf_hub_download(
-                MODEL, "config.json", revision=REVISION, local_files_only=True
-            )
+            hf_hub_download(MODEL, "config.json", revision=REVISION, local_files_only=True)
         ).parent
         report["cache_validation"] = validate_cached_weights(snapshot)
         import torch
@@ -210,23 +203,17 @@ def main():
         outer.model.config.use_cache = False
         outer.setup_data()  # Actual AlignTune DataManager/CuratorKIT path, not a mocked load.
         tok = outer.tokenizer
-        by_messages = {
-            json.dumps(row["messages"], sort_keys=True): row for row in originals
-        }
+        by_messages = {json.dumps(row["messages"], sort_keys=True): row for row in originals}
         prepared, expected = [], {}
         expected_letter_tokens = {}
         for row in outer.train_dataset:
             messages = row["messages"]
             if json.dumps(messages, sort_keys=True) not in by_messages:
-                raise ValueError(
-                    "AlignTune data conversion changed a curated conversation"
-                )
+                raise ValueError("AlignTune data conversion changed a curated conversation")
             prefix = tok.apply_chat_template(
                 messages[:-1], tokenize=False, add_generation_prompt=True
             )
-            full = tok.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=False
-            )
+            full = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
             if not full.startswith(prefix):
                 raise ValueError("Chat template prefix mismatch")
             completion = full[len(prefix) :]
@@ -240,14 +227,10 @@ def main():
                 ids = tok(full, add_special_tokens=specials)["input_ids"]
                 prefix_ids = tok(prefix, add_special_tokens=specials)["input_ids"]
                 if ids[: len(prefix_ids)] != prefix_ids or len(ids) > 1536:
-                    raise ValueError(
-                        "Empty supervision, prefix drift or context overflow"
-                    )
+                    raise ValueError("Empty supervision, prefix drift or context overflow")
                 expected[tuple(ids)] = len(prefix_ids)
                 if ids[len(prefix_ids)] != letter_ids[0]:
-                    raise ValueError(
-                        "The first supervised token must be the intended state label"
-                    )
+                    raise ValueError("The first supervised token must be the intended state label")
                 expected_letter_tokens[tuple(ids)] = letter_ids[0]
             prepared.append({"prompt": prefix, "completion": completion})
         if len(prepared) != 864:
@@ -259,18 +242,12 @@ def main():
         outer.dataset = outer.train_dataset
         outer.eval_dataset = None
         trainable = {
-            name: param
-            for name, param in outer.model.named_parameters()
-            if param.requires_grad
+            name: param for name, param in outer.model.named_parameters() if param.requires_grad
         }
         if not trainable or any("lora_" not in name for name in trainable):
             raise ValueError("Expected only nonempty LoRA trainable parameters")
-        before = {
-            name: param.detach().cpu().clone() for name, param in trainable.items()
-        }
-        report["trainable_parameters"] = sum(
-            param.numel() for param in trainable.values()
-        )
+        before = {name: param.detach().cpu().clone() for name, param in trainable.items()}
+        report["trainable_parameters"] = sum(param.numel() for param in trainable.values())
         gradients = {"finite_nonzero_events": 0, "nonfinite_events": 0}
 
         def observe_gradient(grad):
@@ -280,9 +257,7 @@ def main():
                 gradients["finite_nonzero_events"] += 1
             return grad
 
-        handles = [
-            param.register_hook(observe_gradient) for param in trainable.values()
-        ]
+        handles = [param.register_hook(observe_gradient) for param in trainable.values()]
         losses = []
 
         class AuditCallback(TrainerCallback):
@@ -306,9 +281,7 @@ def main():
                 scaler.load_state_dict(scaler_state)
                 report["initial_loss_scale_for_training"] = scaler.get_scale()
                 if scaler.get_scale() != 1024.0:
-                    raise ValueError(
-                        "Gradient scaler configuration did not take effect"
-                    )
+                    raise ValueError("Gradient scaler configuration did not take effect")
                 params = dict(native.model.named_parameters())
                 active = {name: p for name, p in params.items() if p.requires_grad}
                 if not active or any("lora_" not in name for name in active):
@@ -333,45 +306,32 @@ def main():
                     check = verify_supervision(ids, labels, expected)
                     boundary = expected[tuple(ids)]
                     if labels[boundary] != expected_letter_tokens[tuple(ids)]:
-                        raise ValueError(
-                            "Native trainer lost the class-bearing target token"
-                        )
+                        raise ValueError("Native trainer lost the class-bearing target token")
                     check["class_bearing_token_supervised"] = True
                     check["class_bearing_token_count"] = 1
-                    check["delimiter_tokens_supervised"] = (
-                        check["supervised_tokens"] - 1
-                    )
+                    check["delimiter_tokens_supervised"] = check["supervised_tokens"] - 1
                     checks.append(check)
-                report.update(
-                    supervision_checks=checks, phase="actual_aligntune_training"
-                )
+                report.update(supervision_checks=checks, phase="actual_aligntune_training")
                 save()
 
             def on_log(self, args, state, control, logs=None, **kwargs):
                 if logs and "loss" in logs:
-                    losses.append(
-                        {"step": state.global_step, "loss": float(logs["loss"])}
-                    )
+                    losses.append({"step": state.global_step, "loss": float(logs["loss"])})
 
         original_callbacks = outer.get_hf_callbacks
         outer.get_hf_callbacks = lambda: [*original_callbacks(), AuditCallback()]
         report["phase"] = "trainer_preparation_and_training"
         save()
         started = time.perf_counter()
-        train_result = (
-            outer.train()
-        )  # The genuine AlignTune pathway creates/runs its SFTTrainer.
+        train_result = outer.train()  # The genuine AlignTune pathway creates/runs its SFTTrainer.
         report["training_seconds"] = time.perf_counter() - started
         changed = sum(
-            not torch.equal(param.detach().cpu(), before[name])
-            for name, param in trainable.items()
+            not torch.equal(param.detach().cpu(), before[name]) for name, param in trainable.items()
         )
         optimizer = outer.trainer.optimizer
         optimizer = getattr(optimizer, "optimizer", optimizer)
         step_values = [
-            float(value["step"].item())
-            if hasattr(value["step"], "item")
-            else float(value["step"])
+            float(value["step"].item()) if hasattr(value["step"], "item") else float(value["step"])
             for value in optimizer.state.values()
             if "step" in value
         ]
@@ -452,9 +412,7 @@ def main():
         )
         if completed.returncode:
             raise ValueError("State-only classification evaluation subprocess failed")
-        evaluation = json.loads(
-            (root / "compact-state-diagnostic/latest-result.json").read_text()
-        )
+        evaluation = json.loads((root / "compact-state-diagnostic/latest-result.json").read_text())
         if evaluation["status"] != "PASS":
             raise ValueError("State evaluation execution gate failed")
         report.update(
@@ -466,9 +424,7 @@ def main():
     except Exception as exc:
         message = re.sub(r"https?://\S+", "[URL redacted]", str(exc))
         message = re.sub(r"hf_[A-Za-z0-9_]+", "[credential redacted]", message)
-        report.update(
-            status="FAIL", error_type=type(exc).__name__, error_message=message[:5000]
-        )
+        report.update(status="FAIL", error_type=type(exc).__name__, error_message=message[:5000])
     save()
     print(json.dumps(report, indent=2, default=str), flush=True)
     return 0 if report["status"] == "PASS" else 1

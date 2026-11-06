@@ -61,10 +61,7 @@ def main():
         original = json.loads(Path(os.environ["STATE_MODEL_REPORT"]).read_text())
         adapter = Path(original["adapter_directory"])
         weight = adapter / "adapter_model.safetensors"
-        assert (
-            hashlib.sha256(weight.read_bytes()).hexdigest()
-            == original["adapter_sha256"]
-        )
+        assert hashlib.sha256(weight.read_bytes()).hexdigest() == original["adapter_sha256"]
         report.update(
             model_revision=revision,
             adapter_sha256=original["adapter_sha256"],
@@ -117,29 +114,21 @@ def main():
                             )
                         label_ids = {}
                         for label in LABELS:
-                            extended = tok(text + label, add_special_tokens=False)[
-                                "input_ids"
-                            ]
-                            if (
-                                extended[:-1] != prefix_ids
-                                or len(extended) != len(prefix_ids) + 1
-                            ):
+                            extended = tok(text + label, add_special_tokens=False)["input_ids"]
+                            if extended[:-1] != prefix_ids or len(extended) != len(prefix_ids) + 1:
                                 raise ValueError(
                                     "Choice must be exactly one continuation token with stable prefix"
                                 )
                             label_ids[label] = extended[-1]
                         if len(set(label_ids.values())) != 4:
                             raise ValueError("Choice tokens must be distinct")
-                        inputs = tok(
-                            text, add_special_tokens=False, return_tensors="pt"
-                        ).to("cuda")
+                        inputs = tok(text, add_special_tokens=False, return_tensors="pt").to("cuda")
                         with torch.inference_mode():
                             result = model(**inputs, use_cache=False)
                         logits = result.logits[0, -1].float()
                         normalizer = torch.logsumexp(logits, dim=-1)
                         scores = {
-                            label: float(logits[token].item())
-                            for label, token in label_ids.items()
+                            label: float(logits[token].item()) for label, token in label_ids.items()
                         }
                         decision = select_decision(scores, protocol["options"])
                         top_id = int(logits.argmax().item())
@@ -166,8 +155,7 @@ def main():
                             "choice_probability_mass_in_full_vocabulary": mass,
                             "full_vocabulary_top_token_id": top_id,
                             "full_vocabulary_top_token": tok.decode([top_id]),
-                            "full_vocabulary_top_is_option": top_id
-                            in label_ids.values(),
+                            "full_vocabulary_top_is_option": top_id in label_ids.values(),
                         }
                         stream.write(json.dumps(row) + "\n")
                         stream.flush()
@@ -234,9 +222,7 @@ def main():
             save()
         report["status"] = "PASS"
     except Exception as exc:
-        report.update(
-            status="FAIL", error_type=type(exc).__name__, error_message=str(exc)[:3000]
-        )
+        report.update(status="FAIL", error_type=type(exc).__name__, error_message=str(exc)[:3000])
     save()
     print(json.dumps(report, indent=2), flush=True)
     return 0 if report["status"] == "PASS" else 1
