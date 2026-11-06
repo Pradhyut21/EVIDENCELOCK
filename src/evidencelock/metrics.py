@@ -115,7 +115,7 @@ def score(cases, predictions: dict[str, str], *, slices=True):
     families = defaultdict(dict)
     for case in cases:
         if case.provenance.get("variant"):
-            families[case.family_id][case.provenance["variant"]] = case.case_id
+            families[(case.family_id, case.language_variant)][case.provenance["variant"]] = case.case_id
     pairs = [
         (variants[a], variants[b])
         for variants in families.values()
