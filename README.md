@@ -4,17 +4,20 @@
 
 When records disagree, the model must not improvise.
 
-Implementation began November 1, 2026. This is a research pipeline under construction, not a completed fine-tune or a deployed safety system. See [PREEXISTING.md](PREEXISTING.md) for the preparation history.
+Implementation began November 1, 2026. The English pilot has executed curation, actual model training, adapter reloading and evaluation. The wider multilingual study remains incomplete, and the measured models have serious reliability failures. See [PREEXISTING.md](PREEXISTING.md) for the preparation history.
 
 ## Current implementation
 
 - Strict Pydantic case, evidence and response contracts, including source/revision chronology and citation validation.
 - Independent evidence oracle, original synthetic English generator and connected-component family/template/translation grouping.
 - Real CuratorKIT ingestion, schema gate, exact deduplication, cleaning and trainer exports with label/evidence preservation checks.
-- Real AuditKIT precomputed-prediction adapter and custom metrics. Oracle/fixture runs are explicitly identified and are not model benchmarks.
-- GPU-guarded real Tiny Aya inference code. No successful model inference, AlignTune training or adapter reload is claimed.
+- Real AuditKIT evaluation of preserved baseline/adapter generations, with custom reliability metrics and actual prompt provenance. Oracle/fixture runs remain explicitly identified.
+- Real pinned Tiny Aya inference, NF4 LoRA backward passes, native AlignTune TRL SFT/DPO training, adapter saving and independent reloading on remote NVIDIA GPUs.
+- An auxiliary state-only classification experiment using lossless observable ledgers and four option rotations. This measures state selection separately from drafting and citation correctness.
 
-Only English pilot data is currently generated. Hindi/Hinglish and an independently authored challenge set remain pending actual review. Three template lineages give a coarse split: target 600/100/150 sizes are not claimed. CuratorKIT's optional hallucination judge is not used.
+The original synthetic English pilot contains 297 cases: 99 each in training, development validation and frozen test, separated by three template lineages. This is a coarse split with limited independent support. Hindi/Hinglish translations and a separate challenge draft exist but remain unreviewed. A 16-case training-derived language probe has executed and is explicitly diagnostic. CuratorKIT's optional hallucination judge is not used.
+
+The first 99-update SFT adapter produced 72/99 valid validation responses and 35/54 supported completions, but detected 0/9 conflicts and 0/27 missing-evidence cases. Later DPO ablations improved some development metrics while retaining serious safety failures. These are reused development-validation results on unreviewed synthetic examples, not frozen-test evidence or production readiness. Negative results are valid research findings; candidate promotion thresholds do not redefine the original research success criteria.
 
 ## Install and verify
 
@@ -28,7 +31,7 @@ uv sync --extra dev --locked
 .venv\Scripts\python.exe -m evidencelock doctor
 ```
 
-On Linux replace `.venv\Scripts\python.exe` with `.venv/bin/python` and Ruff with `.venv/bin/ruff`. The same locked CPU project is intended to run on Linux, but this checkout was initially exercised on Windows; Linux execution remains unverified.
+On Linux replace `.venv\Scripts\python.exe` with `.venv/bin/python` and Ruff with `.venv/bin/ruff`. The isolated Linux training stack has now executed on Tesla T4 and L4 runtimes. The Windows CPU environment stays separate.
 
 ## CPU pipeline
 
@@ -50,19 +53,33 @@ Audit wiring can be exercised with the **deterministic reference**, not a learne
 
 `source_kind=oracle_reference` and `model_improvement_measured=false` are preserved. Invalid/missing outputs stay in metric denominators. See [evaluation policy](docs/EVALUATION-POLICY.md).
 
-## GPU stage — blocked on available hardware
+## Verified remote GPU execution
 
 Model: `CohereLabs/tiny-aya-fire`, pinned revision `73500c80fcb6c8bea3e830c21d5d2920249a0e1a`. Gated access and offline tokenizer preparation were verified before implementation. No tokens or model weights belong in Git.
 
-The observed local MX330/2 GiB GPU is excluded from full-model inference/training. The CPU environment intentionally lacks CUDA PyTorch and AlignTune. A separate reviewed Linux training lock exists in the preparation kit; it is not yet a runtime-tested training environment. No paid compute is authorized.
+The observed local MX330/2 GiB GPU is excluded from full-model inference/training. Remote jobs use an isolated Linux Python 3.12 environment with torch 2.11.0+cu130, Transformers 5.22.1, PEFT 0.21.2, TRL 1.7.1, Accelerate 1.15.0, bitsandbytes 0.50.2, CuratorKIT 0.1.22, AlignTune 0.1.28 and AuditKIT 1.1.3. The complete dependency graph is pinned and checked in `gpu/requirements-linux-py312.txt`; declared dependencies are retained.
+
+FP16 NF4 training uses FP32 adapter master weights after native TRL setup and an initial gradient scale of 1024. Native batch checks verify the actual completion mask; model quality is evaluated separately from successful training. The user authorized at most $20 of existing Hugging Face credits. Each submitted L4 run has a bounded timeout; duplicate submission guards and cumulative compute ceilings are recorded privately. Actual billing totals are not inferred from configured ceilings.
 
 ```powershell
 .venv\Scripts\python.exe -m evidencelock baseline --input data/pilot-v1/split.jsonl --subset validation --output artifacts/base/predictions.jsonl
 ```
 
-In this CPU checkout that command must report BLOCKED (exit 2). On a verified GPU environment its code performs actual pinned-model 4-bit inference; that pathway has not been executed or verified yet. A decoded output is preserved before schema scoring; no output repair is applied. Train-smoke/train commands will be added only after the actual installed AlignTune interface can be exercised and validated; there are no dummy training commands.
+In this CPU checkout that command reports BLOCKED (exit 2). Remote training entry points are `gpu/train_experiment.py` for the original pilot and `gpu/train_state_only.py` for the auxiliary classifier. They require the prepared input bundle and real historical feasibility gates. Raw decoded outputs are preserved before schema scoring; no output repair is applied. The remote bundle validator runs before dependency installation or model download.
 
-Build 1 remains incomplete until real CuratorKIT output is consumed by AlignTune, a learned adapter is saved/reloaded and AuditKIT evaluates actual base/adapter predictions. CPU test counts or oracle scores do not establish model improvement.
+Actual CuratorKIT output has been consumed by AlignTune, learned adapters have been saved/reloaded, and AuditKIT has evaluated real paired model predictions. Full project completion still requires the documented review and final evaluation requirements. CPU test counts and oracle scores do not establish model improvement. The latest state-only retry is documented in [its execution record](docs/STATE-TRAINING-RETRY.md).
+
+Private immutable bundles preserve code, curated inputs, historical feasibility reports and dependency locks. Restore the current classifier retry without running it:
+
+```bash
+python scripts/reproduce_private_run.py \
+  --revision 886de99bb318f56d01295a6284fc06187a3179ee \
+  --path input/state-only-training-v2/payload.zip \
+  --sha256 c23c06ad17cc8771c1270c7cad7ec981ef819beb6e430f5f5a0482a8a5d90b48 \
+  --output /tmp/evidencelock-reproduction
+```
+
+Authenticate locally with Hugging Face before restoring private inputs. Add `--execute` only on a selected Linux GPU with at least 12 GiB VRAM; the wrapper never provisions compute. `/content/evidencelock-gpu` must be unused or contain byte-identical restored inputs. Successful execution and exact GPU determinism are separate claims.
 
 ## Attribution and publication
 
