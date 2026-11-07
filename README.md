@@ -10,6 +10,8 @@ Implementation began November 1, 2026. See [the execution record](docs/BUILD1-EX
 
 ## Public artifacts
 
+[Read the published Hugging Face article](https://huggingface.co/blog/pradhyut/evidencelock).
+
 The submission is organized into source, reusable adapters, benchmark data and research records:
 
 | Artifact | Repository |

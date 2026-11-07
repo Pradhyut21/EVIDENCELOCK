@@ -12,11 +12,12 @@ Publication date: November 7, 2026. Repository and collection visibility is inde
 | Benchmark and curated splits | https://huggingface.co/datasets/pradhyut/evidencelock-benchmark |
 | Logs, traces, outputs and immutable inputs | https://huggingface.co/datasets/pradhyut/evidencelock-research-records |
 | Source | https://github.com/Pradhyut21/EVIDENCELOCK |
+| Hugging Face article | https://huggingface.co/blog/pradhyut/evidencelock |
 
 All 12 unique available adapter weight files retain their original SHA256 values. Standalone public adapter configurations change only the base identifier and pinned revision to portable values; originals and metadata-change records are preserved. Historical reference/smoke artifacts are labeled accurately.
 
 The original 99 English test scenarios have 198 question translations; they are not independent new scenarios. All 693 full-response outputs and 792 auxiliary option-score records are preserved with separate oracle references. Nine actual dataset configs load successfully in an isolated CPU environment.
 
-The article manuscript is available in [HUGGINGFACE-ARTICLE.md](HUGGINGFACE-ARTICLE.md). Hugging Face article publication and the official submission receipt are verified separately; this index does not claim a completed form submission. The official form includes a human CAPTCHA. Personal registration details remain outside the public repositories.
+The [Hugging Face article](https://huggingface.co/blog/pradhyut/evidencelock) is public. Its source manuscript is available in [HUGGINGFACE-ARTICLE.md](HUGGINGFACE-ARTICLE.md). The official submission receipt is tracked separately; this index does not claim a completed form submission. The official form includes a human CAPTCHA. Personal registration details remain outside the public repositories.
 
 Original code: MIT. Original benchmark: CC BY 4.0. Adapter derivatives and generated outputs retain applicable Cohere CC BY-NC/AUP conditions; historical tokenizer assets retain upstream terms. See [third-party notices](THIRD-PARTY.md).
