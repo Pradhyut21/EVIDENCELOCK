@@ -44,6 +44,18 @@ All 396 language-supplement outputs and 297 English comparator outputs are prese
 
 For development context, the first 99-update SFT adapter produced 72/99 valid validation responses and 35/54 supported completions, but detected 0/9 conflicts and 0/27 missing-evidence cases. Later DPO ablations improved some development metrics while retaining evidence-handling errors. These figures use repeatedly reused synthetic validation examples and remain distinct from frozen-test results.
 
+The auxiliary classifier's frozen English results provide several distinct before-and-after measures:
+
+| Classification measure | Base | State adapter |
+|---|---:|---:|
+| Correct state decisions | 39/99 | 77/99 |
+| Conflict recall | 0/9 | 9/9 |
+| Missing-evidence recall | 0/27 | 20/27 |
+| Missing cases incorrectly called SUPPORTED (lower is better) | 24/27 | 6/27 |
+| Cases unanimous across four option rotations | 10/99 | 94/99 |
+
+These results use the same 99 frozen English scenarios. The false-support count falls by 75% within the 27 missing-evidence cases. Six such errors remain, and the classifier also makes supported-case errors. Complete-response generation is evaluated separately in the results above; classification gains do not establish drafting or citation reliability.
+
 ## Install and verify
 
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/). The CPU environment does not install the full GPU stack.
@@ -94,17 +106,20 @@ In this CPU checkout that command reports BLOCKED (exit 2). Remote training entr
 
 Actual CuratorKIT output has been consumed by AlignTune, learned adapters have been saved/reloaded, and AuditKIT has evaluated real paired model predictions. The frozen research pilot has completed execution. Independent linguistic and challenge validation remain separate research work. CPU test counts and oracle scores do not establish model improvement. The state-only retry is documented in [its execution record](docs/STATE-TRAINING-RETRY.md). The held-out question-language supplement is documented in [its protocol](docs/MULTILINGUAL-EVALUATION-PROTOCOL.md), [historical runtime recovery](docs/RUNTIME-RECOVERY.md) and [final language partitions](docs/LANGUAGE-PARTITIONS-AND-METRIC-ERRATUM.md).
 
-Historical private immutable bundles preserve the original run's code, curated inputs, feasibility reports and dependency locks. Account-authorized contributors can restore the classifier retry without running it:
+Public immutable input bundles preserve the original run's code, curated inputs, feasibility reports and dependency locks. Restore the classifier retry without executing training:
 
 ```bash
-python scripts/reproduce_private_run.py \
-  --revision 886de99bb318f56d01295a6284fc06187a3179ee \
-  --path input/state-only-training-v2/payload.zip \
+uv run --no-project --python 3.12 --with huggingface_hub==2.4.0 python scripts/reproduce_private_run.py \
+  --repo pradhyut/evidencelock-research-records \
+  --revision ac900d26f1bfcd9ee630847f3df7eebf2f880329 \
+  --path input-bundles/state-training-retry.zip \
   --sha256 c23c06ad17cc8771c1270c7cad7ec981ef819beb6e430f5f5a0482a8a5d90b48 \
   --output /tmp/evidencelock-reproduction
 ```
 
-Authenticate locally with Hugging Face before restoring private inputs. Add `--execute` only on a selected Linux GPU with at least 12 GiB VRAM; the wrapper never provisions compute. `/content/evidencelock-gpu` must be unused or contain byte-identical restored inputs. Successful execution and exact GPU determinism are separate claims.
+The public input bundle can be inspected without private-run repository access. Model execution separately requires authenticated access to the pinned gated base model. Add `--execute` only on a selected Linux GPU with at least 12 GiB VRAM; the wrapper never provisions compute. `/content/evidencelock-gpu` must be unused or contain byte-identical restored inputs. Exact GPU determinism is a separate claim. On Windows, use short extraction/cache paths to avoid MAX_PATH limits.
+
+See [the public artifact index](docs/PUBLIC-ARTIFACTS.md) for collections, adapter repositories, data and research records. [The article manuscript](docs/HUGGINGFACE-ARTICLE.md) and [submission abstract](docs/SUBMISSION-ABSTRACT.md) document the rationale and measurements.
 
 ## Attribution and publication
 
